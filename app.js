@@ -58,14 +58,24 @@ function setupFirebaseListeners() {
             productivityData[day] = {};
             Object.keys(raw[day] || {}).forEach(techId => {
                 productivityData[day][techId] = {};
-                Object.keys(raw[day][techId] || {}).forEach(hour => {
-                    const hourData = raw[day][techId][hour];
-                    // Si es objeto de Firebase (push), convertir a array
+                Object.keys(raw[day][techId] || {}).forEach(rawHourKey => {
+                    const hourData = raw[day][techId][rawHourKey];
+
+                    // Normalizar clave: "23-00_-_24-00" → "23-00_-_00-00"
+                    // Esto corrige datos guardados antes del fix de medianoche
+                    const normalizedKey = rawHourKey.replace(/_-_24-00$/, '_-_00-00');
+
+                    const existing = productivityData[day][techId][normalizedKey] || [];
+
+                    let entries;
                     if (hourData && typeof hourData === 'object' && !Array.isArray(hourData)) {
-                        productivityData[day][techId][hour] = Object.values(hourData);
+                        entries = Object.values(hourData);
                     } else {
-                        productivityData[day][techId][hour] = Array.isArray(hourData) ? hourData : [];
+                        entries = Array.isArray(hourData) ? hourData : [];
                     }
+
+                    // Combinar con entradas existentes bajo la clave normalizada
+                    productivityData[day][techId][normalizedKey] = [...existing, ...entries];
                 });
             });
         });
