@@ -455,7 +455,8 @@ function initForm() {
 
 function autoDetectHour() {
     const h = new Date().getHours();
-    return `${h.toString().padStart(2,'0')}:00 - ${(h+1).toString().padStart(2,'0')}:00`;
+    const nextH = (h + 1) % 24; // Fix: 23+1=00, no 24
+    return `${h.toString().padStart(2,'0')}:00 - ${nextH.toString().padStart(2,'0')}:00`;
 }
 
 async function submitEntry(techId, serials) {
