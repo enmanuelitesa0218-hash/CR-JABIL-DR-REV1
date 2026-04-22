@@ -489,16 +489,36 @@ function getFilteredItems(techId, hour) {
     const start = document.getElementById('filter-date-start')?.value || '';
     const end = document.getElementById('filter-date-end')?.value || '';
     let items = [];
+
+    // Generar variantes de clave (nueva y la vieja con "24:00")
     const safehour = hour.replace(/:/g, '-').replace(/ /g, '_');
+    // Variante antigua: "23:00 - 00:00" podría estar guardada como "23:00 - 24:00"
+    const altHour = hour.replace('- 00:00', '- 24:00');
+    const altSafehour = altHour.replace(/:/g, '-').replace(/ /g, '_');
 
     Object.keys(productivityData).forEach(day => {
         if (day >= start && day <= end) {
-            const hourData = productivityData[day]?.[techId]?.[safehour]
-                          || productivityData[day]?.[techId]?.[hour];
-            if (Array.isArray(hourData)) items.push(...hourData);
+            const techData = productivityData[day]?.[techId];
+            if (!techData) return;
+
+            // Buscar en clave nueva, clave antigua y clave original (sin transformar)
+            [safehour, altSafehour, hour, altHour].forEach(key => {
+                const hourData = techData[key];
+                if (Array.isArray(hourData) && hourData.length > 0) {
+                    items.push(...hourData);
+                }
+            });
         }
     });
-    return items;
+
+    // Eliminar duplicados por si la misma entrada aparece bajo dos claves
+    const seen = new Set();
+    return items.filter(item => {
+        const k = JSON.stringify(item);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+    });
 }
 
 function renderDashboard() {
