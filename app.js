@@ -12,6 +12,7 @@ const globalHours = [
 let appTechnicians = [];
 let productivityData = {};
 let productivityChartInstance = null;
+let shiftGoal = 0; // Meta de unidades por turno
 
 // ------------------------------------------
 // FIREBASE - Listeners en Tiempo Real
@@ -26,6 +27,14 @@ function setupFirebaseListeners() {
 
     console.log("✅ Firebase activo. Escuchando cambios en tiempo real...");
     updateSyncStatus(true);
+
+    // Escuchar meta del turno
+    window.db.ref('config/shiftGoal').on('value', (snapshot) => {
+        shiftGoal = snapshot.val() || 0;
+        const goalInput = document.getElementById('shift-goal-input');
+        if (goalInput && shiftGoal > 0) goalInput.value = shiftGoal;
+        updateKPIs();
+    });
 
     // Escuchar técnicos en tiempo real
     window.db.ref('techs').on('value', (snapshot) => {
@@ -192,9 +201,35 @@ function updateKPIs() {
         }
     });
 
-    let h = new Date().getHours() - 7;
-    if (h <= 0) h = 1;
-    const efficiency = (totalToday / h).toFixed(1);
+    // --- Eficiencia basada en Meta ---
+    const effEl = document.getElementById('avg-efficiency');
+    const effDetail = document.getElementById('efficiency-detail');
+    const projEl = document.getElementById('shift-projection');
+    const projDetail = document.getElementById('projection-detail');
+
+    if (shiftGoal > 0) {
+        const effPct = Math.round((totalToday / shiftGoal) * 100);
+        if (effEl) { effEl.textContent = `${effPct}%`; effEl.style.color = effPct >= 100 ? '#22c55e' : effPct >= 70 ? '#f59e0b' : '#ef4444'; }
+        if (effDetail) effDetail.textContent = `${totalToday} de ${shiftGoal} unidades meta`;
+
+        // Proyección al cierre del turno (8 horas desde las 7:00)
+        const now = new Date();
+        const hoursWorked = Math.max(0.5, now.getHours() + now.getMinutes() / 60 - 7);
+        const hoursLeft = Math.max(0, 15 - now.getHours() - now.getMinutes() / 60); // Turno termina a las 22:00
+        const ratePerHour = totalToday / hoursWorked;
+        const projection = Math.round(totalToday + ratePerHour * hoursLeft);
+        if (projEl) { projEl.textContent = projection; projEl.style.color = projection >= shiftGoal ? '#22c55e' : '#ef4444'; }
+        if (projDetail) projDetail.textContent = projection >= shiftGoal ? '✅ Se alcanzará la meta' : `⚠️ Faltan ~${shiftGoal - projection} unidades`;
+    } else {
+        // Sin meta: mostrar ritmo por hora
+        let h = new Date().getHours() - 7;
+        if (h <= 0) h = 1;
+        const rate = (totalToday / h).toFixed(1);
+        if (effEl) { effEl.textContent = rate; effEl.style.color = ''; }
+        if (effDetail) effDetail.textContent = 'unidades/hora (sin meta)';
+        if (projEl) projEl.textContent = '---';
+        if (projDetail) projDetail.textContent = 'Configura una meta en Admin';
+    }
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     set('total-hoy', totalToday);
@@ -202,7 +237,6 @@ function updateKPIs() {
     set('shift-leader-count', `${shiftLeader.count} unidades`);
     set('month-leader-name', monthLeader.name);
     set('month-leader-count', `${monthLeader.count} unidades`);
-    set('avg-efficiency', efficiency);
 }
 
 function updateTotalGlobal() {
@@ -543,6 +577,22 @@ function initAdmin() {
         idIn.value = ''; idIn.disabled = false; nameIn.value = ''; pinIn.value = '';
         subBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
     };
+
+    // Botón guardar meta
+    const btnGoal = document.getElementById('btn-save-goal');
+    if (btnGoal) {
+        btnGoal.addEventListener('click', async () => {
+            const goalVal = parseInt(document.getElementById('shift-goal-input').value);
+            if (!goalVal || goalVal < 1) { alert('Ingresa un número válido mayor a 0.'); return; }
+            shiftGoal = goalVal;
+            if (window.db) {
+                await window.db.ref('config/shiftGoal').set(goalVal);
+            }
+            const msg = document.getElementById('goal-saved-msg');
+            if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 3000); }
+            updateKPIs();
+        });
+    }
 
     renderAdminTable();
 }
