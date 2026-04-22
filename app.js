@@ -275,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initForm();
     initAdmin();
+    initHistorial();
 
     if (localStorage.getItem('jabil_theme') === 'dark') {
         document.body.setAttribute('data-theme', 'dark');
@@ -368,6 +369,19 @@ function initNavigation() {
                 document.getElementById(targetId).classList.add('active');
                 if (targetId === 'dashboard-view') renderDashboard();
                 if (targetId === 'grafica-view') renderChart();
+                if (targetId === 'historial-view') {
+                    // Actualizar selector de técnicos en historial
+                    const hf = document.getElementById('hist-tech-filter');
+                    if (hf) {
+                        hf.innerHTML = '<option value="">Todos</option>';
+                        appTechnicians.forEach(t => {
+                            const o = document.createElement('option');
+                            o.value = t.id; o.textContent = t.name;
+                            hf.appendChild(o);
+                        });
+                    }
+                    renderHistorial();
+                }
             };
             if (targetId === 'tecnicos-view') window.showAdminAuthModal(action);
             else action();
@@ -635,4 +649,80 @@ function exportToExcel() {
     link.href = URL.createObjectURL(blob);
     link.download = `productividad_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
+}
+
+// ------------------------------------------
+// HISTORIAL
+// ------------------------------------------
+function renderHistorial() {
+    const body = document.getElementById('historial-body');
+    const totalEl = document.getElementById('historial-total');
+    if (!body) return;
+
+    const filterTech = document.getElementById('hist-tech-filter')?.value || '';
+    const filterStart = document.getElementById('hist-date-start')?.value || '';
+    const filterEnd = document.getElementById('hist-date-end')?.value || '';
+
+    const rows = [];
+    let grandTotal = 0;
+
+    // Iterar sobre todos los datos de productividad
+    Object.keys(productivityData).sort().reverse().forEach(day => {
+        if (filterStart && day < filterStart) return;
+        if (filterEnd && day > filterEnd) return;
+
+        Object.keys(productivityData[day] || {}).forEach(techId => {
+            if (filterTech && techId !== filterTech) return;
+
+            const tech = appTechnicians.find(t => t.id === techId);
+            const techName = tech ? tech.name : techId;
+            const techGoal = parseInt(tech?.goal) || 0;
+
+            Object.keys(productivityData[day][techId] || {}).forEach(hourKey => {
+                const items = productivityData[day][techId][hourKey];
+                const count = Array.isArray(items) ? items.length : 0;
+                if (count === 0) return;
+
+                grandTotal += count;
+
+                // Mostrar hora en formato legible
+                const hourDisplay = hourKey.replace(/--/g, ':').replace(/_-_/g, ' - ').replace(/-/g, ':');
+
+                // Eficiencia por hora (solo si hay meta, proporcional a 1/17 del turno)
+                let effText = 'N/A';
+                let effColor = '#888';
+                if (techGoal > 0) {
+                    const goalPerHour = techGoal / 15; // 15 horas de turno
+                    const eff = Math.round((count / goalPerHour) * 100);
+                    effText = `${eff}%`;
+                    effColor = eff >= 100 ? '#22c55e' : eff >= 70 ? '#f59e0b' : '#ef4444';
+                }
+
+                rows.push(`<tr>
+                    <td>${day}</td>
+                    <td><strong>${techName}</strong></td>
+                    <td style="font-family:monospace; font-size:0.85rem;">${hourDisplay}</td>
+                    <td><span style="background:rgba(99,102,241,0.2); padding:3px 10px; border-radius:20px; font-weight:700;">${count}</span></td>
+                    <td style="color:${effColor}; font-weight:700;">${effText}</td>
+                </tr>`);
+            });
+        });
+    });
+
+    body.innerHTML = rows.length > 0 
+        ? rows.join('') 
+        : '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">No hay registros para los filtros seleccionados.</td></tr>';
+    
+    if (totalEl) totalEl.innerHTML = `<i class="fa-solid fa-sigma"></i> Total filtrado: <strong>${grandTotal} unidades</strong>`;
+}
+
+function initHistorial() {
+    const nowStr = new Date().toISOString().split('T')[0];
+    const s = document.getElementById('hist-date-start');
+    const e = document.getElementById('hist-date-end');
+    // Default: último mes
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    if (s) s.value = monthAgo.toISOString().split('T')[0];
+    if (e) e.value = nowStr;
 }

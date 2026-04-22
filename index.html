@@ -33,6 +33,9 @@
                 <button class="nav-btn" data-target="grafica-view">
                     <i class="fa-solid fa-chart-bar"></i> Gráfica
                 </button>
+                <button class="nav-btn" data-target="historial-view">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Historial
+                </button>
                 <button class="nav-btn" data-target="tecnicos-view">
                     <i class="fa-solid fa-users-gear"></i> Gestionar Técnicos
                 </button>
@@ -213,8 +216,44 @@
                     </div>
                  </section>
 
+                <!-- VISTA: HISTORIAL -->
+                <section id="historial-view" class="view">
+                    <div class="glass-panel" style="padding: 30px;">
+                        <h2><i class="fa-solid fa-clock-rotate-left" style="color:#a78bfa; margin-right:10px;"></i>Historial de Productividad</h2>
+                        <p class="panel-desc">Registro completo de todas las unidades por técnico, hora y fecha.</p>
+                        <div style="display:flex; gap:15px; flex-wrap:wrap; margin:20px 0; align-items:flex-end;">
+                            <div class="form-group" style="margin:0; flex:1; min-width:150px;">
+                                <label>Técnico</label>
+                                <select id="hist-tech-filter" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; padding:10px; border-radius:var(--radius-md);">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin:0; flex:1; min-width:130px;">
+                                <label>Desde</label>
+                                <input type="date" id="hist-date-start" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; padding:10px; border-radius:var(--radius-md);">
+                            </div>
+                            <div class="form-group" style="margin:0; flex:1; min-width:130px;">
+                                <label>Hasta</label>
+                                <input type="date" id="hist-date-end" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; padding:10px; border-radius:var(--radius-md);">
+                            </div>
+                            <button onclick="renderHistorial()" class="btn-primary" style="margin:0; width:auto; padding:10px 20px;">
+                                <i class="fa-solid fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                        <div class="table-container">
+                            <table class="productivity-table">
+                                <thead><tr><th>Fecha</th><th>Técnico</th><th>Hora</th><th>Unidades</th><th>Efic.</th></tr></thead>
+                                <tbody id="historial-body">
+                                    <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Cargando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="historial-total" style="margin-top:15px; text-align:right; font-weight:600; color:var(--accent-secondary);"></div>
+                    </div>
+                </section>
+
                 <!-- VISTA: TECNICOS -->
-                 <section id="tecnicos-view" class="view">
+                <section id="tecnicos-view" class="view">
                     <div class="glass-panel form-panel" style="max-width: 800px;">
                         <h2>Gestión de Técnicos</h2>
                         <p class="panel-desc">Añade o edita a los reparadores del dashboard.</p>
