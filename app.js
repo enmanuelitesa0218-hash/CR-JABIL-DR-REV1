@@ -201,34 +201,46 @@ function updateKPIs() {
         }
     });
 
-    // --- Eficiencia basada en Meta ---
+    // --- Eficiencia basada en Meta Individual por Técnico ---
     const effEl = document.getElementById('avg-efficiency');
     const effDetail = document.getElementById('efficiency-detail');
     const projEl = document.getElementById('shift-projection');
     const projDetail = document.getElementById('projection-detail');
 
-    if (shiftGoal > 0) {
-        const effPct = Math.round((totalToday / shiftGoal) * 100);
-        if (effEl) { effEl.textContent = `${effPct}%`; effEl.style.color = effPct >= 100 ? '#22c55e' : effPct >= 70 ? '#f59e0b' : '#ef4444'; }
-        if (effDetail) effDetail.textContent = `${totalToday} de ${shiftGoal} unidades meta`;
+    // Calcular eficiencia promedio ponderada de todos los técnicos con meta
+    let totalEffPct = 0;
+    let techsWithGoal = 0;
+    const now = new Date();
+    const hoursWorked = Math.max(0.5, now.getHours() + now.getMinutes() / 60 - 7);
+    const hoursLeft = Math.max(0, 15 - now.getHours() - now.getMinutes() / 60);
+    let teamProjection = 0;
 
-        // Proyección al cierre del turno (8 horas desde las 7:00)
-        const now = new Date();
-        const hoursWorked = Math.max(0.5, now.getHours() + now.getMinutes() / 60 - 7);
-        const hoursLeft = Math.max(0, 15 - now.getHours() - now.getMinutes() / 60); // Turno termina a las 22:00
-        const ratePerHour = totalToday / hoursWorked;
-        const projection = Math.round(totalToday + ratePerHour * hoursLeft);
-        if (projEl) { projEl.textContent = projection; projEl.style.color = projection >= shiftGoal ? '#22c55e' : '#ef4444'; }
-        if (projDetail) projDetail.textContent = projection >= shiftGoal ? '✅ Se alcanzará la meta' : `⚠️ Faltan ~${shiftGoal - projection} unidades`;
+    appTechnicians.forEach(tech => {
+        const techGoal = parseInt(tech.goal) || 0;
+        const techTotal = dailyTotals[tech.id] || 0;
+        if (techGoal > 0) {
+            totalEffPct += (techTotal / techGoal) * 100;
+            techsWithGoal++;
+            const rate = techTotal / hoursWorked;
+            teamProjection += Math.round(techTotal + rate * hoursLeft);
+        }
+    });
+
+    if (techsWithGoal > 0) {
+        const avgEff = Math.round(totalEffPct / techsWithGoal);
+        const totalGoal = appTechnicians.reduce((s, t) => s + (parseInt(t.goal) || 0), 0);
+        if (effEl) { effEl.textContent = `${avgEff}%`; effEl.style.color = avgEff >= 100 ? '#22c55e' : avgEff >= 70 ? '#f59e0b' : '#ef4444'; }
+        if (effDetail) effDetail.textContent = `Promedio equipo (${techsWithGoal} técnicos con meta)`;
+        if (projEl) { projEl.textContent = teamProjection; projEl.style.color = teamProjection >= totalGoal ? '#22c55e' : '#ef4444'; }
+        if (projDetail) projDetail.textContent = teamProjection >= totalGoal ? '✅ Equipo alcanzará la meta' : `⚠️ Faltan ~${Math.max(0, totalGoal - teamProjection)} unidades`;
     } else {
-        // Sin meta: mostrar ritmo por hora
-        let h = new Date().getHours() - 7;
+        let h = now.getHours() - 7;
         if (h <= 0) h = 1;
         const rate = (totalToday / h).toFixed(1);
         if (effEl) { effEl.textContent = rate; effEl.style.color = ''; }
-        if (effDetail) effDetail.textContent = 'unidades/hora (sin meta)';
+        if (effDetail) effDetail.textContent = 'unidades/hora (configura metas en Admin)';
         if (projEl) projEl.textContent = '---';
-        if (projDetail) projDetail.textContent = 'Configura una meta en Admin';
+        if (projDetail) projDetail.textContent = 'Agrega meta a cada técnico';
     }
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -479,7 +491,8 @@ function renderDashboard() {
     const body = document.getElementById('dashboard-table-body');
     if (!header || !body) return;
 
-    header.innerHTML = '<th>Técnico</th>' + globalHours.map(h => `<th>${h}</th>`).join('') + '<th class="total-col">Total</th>';
+    // Dashboard: mostrar % eficiencia por técnico
+    header.innerHTML = '<th>Técnico</th><th>Meta</th>' + globalHours.map(h => `<th>${h}</th>`).join('') + '<th class="total-col">Total</th><th class="total-col">Efic.</th>';
 
     body.innerHTML = appTechnicians.map(tech => {
         let rowTotal = 0;
@@ -489,7 +502,20 @@ function renderDashboard() {
             const cls = val === 0 ? 'zero' : val <= 5 ? 'heat-low' : val <= 10 ? 'heat-med' : 'heat-high';
             return `<td class="val-cell ${cls}">${val > 0 ? val : '-'}</td>`;
         }).join('');
-        return `<tr><td>${tech.name}</td>${cells}<td class="val-cell total-col">${rowTotal}</td></tr>`;
+
+        const goal = parseInt(tech.goal) || 0;
+        const effPct = goal > 0 ? Math.round((rowTotal / goal) * 100) : null;
+        const effColor = effPct === null ? '#888' : effPct >= 100 ? '#22c55e' : effPct >= 70 ? '#f59e0b' : '#ef4444';
+        const effText = effPct !== null ? `${effPct}%` : 'N/A';
+        const goalText = goal > 0 ? goal : '-';
+
+        return `<tr>
+            <td>${tech.name}</td>
+            <td style="color:#f59e0b; font-weight:600;">${goalText}</td>
+            ${cells}
+            <td class="val-cell total-col">${rowTotal}</td>
+            <td class="val-cell total-col" style="color:${effColor}; font-weight:700;">${effText}</td>
+        </tr>`;
     }).join('');
 }
 
@@ -544,6 +570,7 @@ function initAdmin() {
                 <td>${t.id}</td>
                 <td>${t.name}</td>
                 <td>****</td>
+                <td style="color:#f59e0b; font-weight:600;">${t.goal || '-'}</td>
                 <td>
                     <button class="btn-primary" style="width:auto;padding:5px 10px;margin-right:5px;" onclick="editTech('${t.id}')"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn-danger" style="width:auto;padding:5px 10px;" onclick="deleteTech('${t.id}')"><i class="fa-solid fa-trash"></i></button>
@@ -556,7 +583,9 @@ function initAdmin() {
         const t = appTechnicians.find(t => t.id === id);
         if (!t) return;
         idIn.value = t.id; idIn.disabled = true;
-        nameIn.value = t.name; pinIn.value = t.pin;
+        nameIn.value = t.name;
+        pinIn.value = t.pin;
+        document.getElementById('new-tech-goal').value = t.goal || '';
         subBtn.innerHTML = '<i class="fa-solid fa-check"></i> Guardar';
         nameIn.focus();
     };
@@ -570,29 +599,20 @@ function initAdmin() {
 
     document.getElementById('add-tech-form').onsubmit = async (e) => {
         e.preventDefault();
-        const tech = { id: idIn.value.trim(), name: nameIn.value.trim(), pin: pinIn.value.trim() };
+        const tech = {
+            id: idIn.value.trim(),
+            name: nameIn.value.trim(),
+            pin: pinIn.value.trim(),
+            goal: parseInt(document.getElementById('new-tech-goal').value) || 0
+        };
         if (!tech.id || !tech.name || !tech.pin) return;
         await saveTechToFirebase(tech);
         editId = null;
-        idIn.value = ''; idIn.disabled = false; nameIn.value = ''; pinIn.value = '';
+        idIn.value = ''; idIn.disabled = false;
+        nameIn.value = ''; pinIn.value = '';
+        document.getElementById('new-tech-goal').value = '';
         subBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
     };
-
-    // Botón guardar meta
-    const btnGoal = document.getElementById('btn-save-goal');
-    if (btnGoal) {
-        btnGoal.addEventListener('click', async () => {
-            const goalVal = parseInt(document.getElementById('shift-goal-input').value);
-            if (!goalVal || goalVal < 1) { alert('Ingresa un número válido mayor a 0.'); return; }
-            shiftGoal = goalVal;
-            if (window.db) {
-                await window.db.ref('config/shiftGoal').set(goalVal);
-            }
-            const msg = document.getElementById('goal-saved-msg');
-            if (msg) { msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 3000); }
-            updateKPIs();
-        });
-    }
 
     renderAdminTable();
 }

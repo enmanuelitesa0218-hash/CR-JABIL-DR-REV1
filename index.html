@@ -219,18 +219,22 @@
                         <h2>Gestión de Técnicos</h2>
                         <p class="panel-desc">Añade o edita a los reparadores del dashboard.</p>
                         
-                        <form id="add-tech-form" style="margin-bottom: 30px; display: flex; gap: 15px; align-items: flex-end;">
-                            <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                        <form id="add-tech-form" style="margin-bottom: 30px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 100px;">
                                 <label>ID (Ej: JB-123)</label>
                                 <input type="text" id="new-tech-id" required style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: #fff; padding: 12px; border-radius: var(--radius-md);">
                             </div>
-                            <div class="form-group" style="margin-bottom: 0; flex: 2;">
+                            <div class="form-group" style="margin-bottom: 0; flex: 2; min-width: 150px;">
                                 <label>Nombre Completo</label>
                                 <input type="text" id="new-tech-name" required style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: #fff; padding: 12px; border-radius: var(--radius-md);">
                             </div>
-                            <div class="form-group" style="margin-bottom: 0; flex: 1;">
-                                <label>PIN Confidencial</label>
-                                <input type="password" id="new-tech-pin" required maxlength="6" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: #fff; padding: 12px; border-radius: var(--radius-md);" placeholder="Ej: 1234">
+                            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 80px;">
+                                <label>PIN</label>
+                                <input type="password" id="new-tech-pin" required maxlength="6" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: #fff; padding: 12px; border-radius: var(--radius-md);" placeholder="1234">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 80px;">
+                                <label>Meta/Turno</label>
+                                <input type="number" id="new-tech-goal" required min="1" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: #fff; padding: 12px; border-radius: var(--radius-md);" placeholder="Ej: 20">
                             </div>
                             <button id="btn-add-tech" type="submit" class="btn-primary" style="margin: 0; width: auto; padding: 12px 20px;"><i class="fa-solid fa-plus"></i></button>
                         </form>
@@ -242,32 +246,16 @@
                                         <th>ID</th>
                                         <th>Nombre</th>
                                         <th>PIN</th>
+                                        <th>Meta/Turno</th>
                                         <th>Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tech-admin-body">
-                                    <!-- Dynamic Techs -->
                                 </tbody>
                             </table>
                         </div>
 
-                        <!-- META DEL TURNO -->
-                        <div style="margin-top: 30px; padding-top: 25px; border-top: 1px solid var(--glass-border);">
-                            <h3 style="margin-bottom: 5px;"><i class="fa-solid fa-bullseye" style="color:#f59e0b; margin-right:8px;"></i>Meta del Turno</h3>
-                            <p class="panel-desc">Define cuántas unidades debe producir el equipo por turno. Esto calculará la eficiencia y proyección.</p>
-                            <div style="display: flex; gap: 15px; align-items: flex-end; margin-top: 15px;">
-                                <div class="form-group" style="margin-bottom: 0; flex: 1;">
-                                    <label>Unidades Meta por Turno</label>
-                                    <input type="number" id="shift-goal-input" min="1" placeholder="Ej: 50" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: #fff; padding: 12px; border-radius: var(--radius-md); font-size: 1.1rem;">
-                                </div>
-                                <button id="btn-save-goal" class="btn-primary" style="margin: 0; width: auto; padding: 12px 25px; background: #f59e0b; color: #000; font-weight: 700;">
-                                    <i class="fa-solid fa-floppy-disk"></i> Guardar Meta
-                                </button>
-                            </div>
-                            <div id="goal-saved-msg" style="display:none; color:#22c55e; margin-top:10px; font-size:0.85rem;">
-                                <i class="fa-solid fa-circle-check"></i> Meta guardada correctamente.
-                            </div>
-                        </div>
+                        <!-- META GLOBAL REMOVIDA: Ahora la meta es por técnico -->
                     </div>
                  </section>
 
